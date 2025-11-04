@@ -1,0 +1,200 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct Task {
+    int id;
+    char name[100];
+    int status; // 0 = Pending, 1 = Done
+    struct Task *next;
+};
+
+struct Action {
+    char type[10];
+    struct Task task;
+};
+
+struct Task *head = NULL;
+struct Action undoStack[100];
+int top = -1;
+int taskCount = 0;
+
+// ---------- Stack Functions ----------
+void pushAction(char type[], struct Task task) {
+    if (top < 99) {
+        top++;
+        strcpy(undoStack[top].type, type);
+        undoStack[top].task = task;
+    }
+}
+
+struct Action popAction() {
+    struct Action a;
+    if (top >= 0) {
+        a = undoStack[top];
+        top--;
+    } else {
+        strcpy(a.type, "NONE");
+    }
+    return a;
+}
+
+// ---------- Linked List Functions ----------
+void addTask(char name[]) {
+    struct Task *newTask = (struct Task*) malloc(sizeof(struct Task));
+    newTask->id = ++taskCount;
+    strcpy(newTask->name, name);
+    newTask->status = 0;
+    newTask->next = NULL;
+
+    if (head == NULL)
+        head = newTask;
+    else {
+        struct Task *temp = head;
+        while (temp->next != NULL)
+            temp = temp->next;
+        temp->next = newTask;
+    }
+
+    pushAction("ADD", *newTask);
+    printf("✅ Task added successfully!\n");
+}
+
+void viewTasks() {
+    if (head == NULL) {
+        printf("No tasks found!\n");
+        return;
+    }
+    struct Task *temp = head;
+    printf("\n------ TO-DO LIST ------\n");
+    while (temp != NULL) {
+        printf("#%d %s [%s]\n", temp->id, temp->name,
+               temp->status ? "Done" : "Pending");
+        temp = temp->next;
+    }
+    printf("------------------------\n");
+}
+
+struct Task* findTask(int id) {
+    struct Task *temp = head;
+    while (temp != NULL) {
+        if (temp->id == id)
+            return temp;
+        temp = temp->next;
+    }
+    return NULL;
+}
+
+void markDone(int id) {
+    struct Task *t = findTask(id);
+    if (t == NULL) {
+        printf("❌ Task not found!\n");
+        return;
+    }
+    if (t->status == 1) {
+        printf("Task already marked done!\n");
+        return;
+    }
+    t->status = 1;
+    pushAction("MARK", *t);
+    printf("✅ Task marked as completed!\n");
+}
+
+void deleteTask(int id) {
+    struct Task *temp = head, *prev = NULL;
+    while (temp != NULL && temp->id != id) {
+        prev = temp;
+        temp = temp->next;
+    }
+    if (temp == NULL) {
+        printf("❌ Task not found!\n");
+        return;
+    }
+    if (prev == NULL)
+        head = temp->next;
+    else
+        prev->next = temp->next;
+
+    pushAction("DELETE", *temp);
+    free(temp);
+    printf("✅ Task deleted!\n");
+}
+
+void undoLastAction() {
+    struct Action a = popAction();
+    if (strcmp(a.type, "NONE") == 0) {
+        printf("No actions to undo!\n");
+        return;
+    }
+
+    if (strcmp(a.type, "ADD") == 0) {
+        // Undo add → remove last added task
+        deleteTask(a.task.id);
+        top--; // to prevent recording delete as new action
+        printf("⏪ Undo: Added task removed.\n");
+    }
+    else if (strcmp(a.type, "DELETE") == 0) {
+        // Undo delete → re-add task
+        struct Task *newTask = (struct Task*) malloc(sizeof(struct Task));
+        *newTask = a.task;
+        newTask->next = head;
+        head = newTask;
+        printf("⏪ Undo: Deleted task restored.\n");
+    }
+    else if (strcmp(a.type, "MARK") == 0) {
+        // Undo mark → make pending again
+        struct Task *t = findTask(a.task.id);
+        if (t != NULL) t->status = 0;
+        printf("⏪ Undo: Task unmarked (Pending again).\n");
+    }
+}
+
+// ---------- Main ----------
+int main() {
+    int choice, id;
+    char name[100];
+
+    while (1) {
+        printf("\n==== TO-DO LIST MANAGER ====\n");
+        printf("1. Add Task\n");
+        printf("2. View Tasks\n");
+        printf("3. Mark Task as Done\n");
+        printf("4. Delete Task\n");
+        printf("5. Undo Last Action\n");
+        printf("6. Exit\n");
+        printf("Enter choice: ");
+        scanf("%d", &choice);
+        getchar(); // to consume newline
+
+        switch (choice) {
+            case 1:
+                printf("Enter task description: ");
+                fgets(name, sizeof(name), stdin);
+                name[strcspn(name, "\n")] = 0; // remove newline
+                addTask(name);
+                break;
+            case 2:
+                viewTasks();
+                break;
+            case 3:
+                printf("Enter task ID to mark done: ");
+                scanf("%d", &id);
+                markDone(id);
+                break;
+            case 4:
+                printf("Enter task ID to delete: ");
+                scanf("%d", &id);
+                deleteTask(id);
+                break;
+            case 5:
+                undoLastAction();
+                break;
+            case 6:
+                printf("Goodbye!\n");
+                exit(0);
+            default:
+                printf("Invalid choice!\n");
+        }
+    }
+    return 0;
+}
