@@ -88,7 +88,7 @@ struct Task* findTask(int id) {
 void markDone(int id) {
     struct Task *t = findTask(id);
     if (t == NULL) {
-        printf("❌ Task not found!\n");
+        printf("Task not found!\n");
         return;
     }
     if (t->status == 1) {
@@ -107,7 +107,7 @@ void deleteTask(int id) {
         temp = temp->next;
     }
     if (temp == NULL) {
-        printf("❌ Task not found!\n");
+        printf("Task not found!\n");
         return;
     }
     if (prev == NULL)
@@ -117,7 +117,7 @@ void deleteTask(int id) {
 
     pushAction("DELETE", *temp);
     free(temp);
-    printf("✅ Task deleted!\n");
+    printf("Task deleted!\n");
 }
 
 void undoLastAction() {
@@ -198,3 +198,4 @@ int main() {
     }
     return 0;
 }
+
